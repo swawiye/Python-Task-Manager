@@ -1,45 +1,96 @@
 import sqlite3
+import csv
 
-connection = sqlite3.connect('Tasks.db') # connect to SQLite and create a database file
+database = "Tasks.db"
 
-# Create a cursor object
-cursor = connection.cursor()
+# Define a Task class to encapsulate all task-related behavior
+class Task:
+    def __init__(self, id=None, title="", description="", due_date=None, completed=False):
+        # Initialize a task object
+        self.id = id
+        self.title = title
+        self.description = description
+        self.due_date = due_date
+        self.completed = completed
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, 
-        title TEXT NOT NULL, 
-        description TEXT, 
-        due_date TEXT, 
-        completed TEXT
-    )  
-''')
+    @staticmethod # A static method is a method which is bound to the class and not the object of the class. It can’t access or modify class state.
+    def initialize_db():
+        # Create the tasks table if it doesn't exist
+        with sqlite3.connect(database) as conn: # connect to SQLite and create a database file
+            c = conn.cursor() # Create a cursor object
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    due_date TEXT,
+                    completed INTEGER DEFAULT 0  -- 0 for incomplete, 1 for complete
+                )
+            ''')
+            conn.commit()
 
-# Inserting data
-tasks_data = [
-    ('Making dinner', 'Roast potatoes and grilled salmon', 15/6/2025, 'YES'),
-    ('Doing laundry', 'White clothes', 15/6/2025, 'NO')
-]
+    @staticmethod
+    def seed_initial_data():
+        # Insert sample data only if the table is empty
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            c.execute('SELECT COUNT(*) FROM tasks')
+            if c.fetchone()[0] == 0: #fetchone() - retrieve only the first row from the table, and iterate through it
+                tasks_data = [
+                    ("Making dinner", "Roast potatoes and grilled salmon", "2025-06-15", 1),
+                    ("Doing laundry", "White clothes", "2025-06-15", 0)
+                ]
+                c.executemany('''
+                    INSERT INTO tasks (title, description, due_date, completed)
+                    VALUES (?, ?, ?, ?)
+                ''', tasks_data)
+                conn.commit()
 
-cursor.executemany('''
-    INSERT INTO tasks (title, description, due_date, completed)
-    VALUES(?, ?, ?, ?)
-''', tasks_data)
+    def save(self):
+        # Save the current task to the database
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO tasks (title, description, due_date, completed)
+                VALUES (?, ?, ?, ?)
+            ''', (self.title, self.description, self.due_date, int(self.completed)))
+            conn.commit()
 
-# Read data
-print("\n--- Tasks ---")
-cursor.execute('SELECT * FROM tasks')
-for row in cursor.fetchall():
-    print(row)
+    @staticmethod
+    def get_all():
+        # Retrieve all tasks from the database, sorted by completion and due date
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            c.execute('SELECT * FROM tasks ORDER BY completed, due_date')
+            rows = c.fetchall()
+            return [Task(*row) for row in rows]  # Return list of Task objects
 
-# Updating data
-cursor.execute('''
-    UPDATE tasks SET title = ? WHERE id = ?                 
-''', ('Washing clothes', 4))
+    @staticmethod
+    def mark_complete(task_id):
+        # Mark a task as complete (set completed to 1)
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            c.execute('UPDATE tasks SET completed = 1 WHERE id = ?', (task_id,))
+            conn.commit()
 
-# Deleting data
-cursor.execute("DELETE FROM tasks WHERE completed = NO")
+    @staticmethod
+    def delete(task_id):
+        # Delete a task by its ID
+        with sqlite3.connect(database) as conn:
+            c = conn.cursor()
+            c.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+            conn.commit()
 
-# Saving changes and Close the connection to the database (only once )
-connection.commit()
-connection.close() 
+    @staticmethod
+    def export_to_csv(filename="tasks_export.csv"):
+        # Export all tasks to a CSV file
+        tasks = Task.get_all()
+        with open(filename, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["ID", "Title", "Description", "Due Date", "Completed"])
+            for t in tasks:
+                writer.writerow([t.id, t.title, t.description, t.due_date, "Yes" if t.completed else "No"])
+
+    def __str__(self):
+        # Nicely format task display for the CLI
+        return f"{self.id:<3} | {self.title:<20} | {self.description:<30} | {self.due_date:<10} | {'✅' if self.completed else '❌'}"
