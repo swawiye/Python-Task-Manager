@@ -135,3 +135,41 @@ def export_tasks():
     Task.export_to_csv()
     print("Tasks exported to tasks_export.csv")
 
+def main():
+    # Initialize the db and add the sample tasks only once
+    Task.initialize_db()
+    Task.seed_initial_data()
+    
+    while True:
+        # CLI menu
+        print("\n===== Task Manager =====")
+        print("Welcome to the task manager, get your life under control")
+        print("1. Add Task")
+        print("2. View Tasks")
+        print("3. Mark Task as Complete")
+        print("4. Delete Task")
+        print("5. Export to CSV")
+        print("6. Exit")
+
+        option = input("Select what you would like to do: ").strip()
+
+        # Handle user choices
+        if option == '1':
+            add_task()
+        elif option == '2':
+            view_tasks()
+        elif option == '3':
+            mark_complete()
+        elif option == '4':
+            delete_task()
+        elif option == '5':
+            export_tasks()
+        elif option == '6':
+            print("Goodbye, see you next time :)")
+            break
+        else:
+            print("Invalid option, please select a valid option.")
+
+# Only run the main menu if this file is executed directly
+if __name__ == "__main__":
+    main()
