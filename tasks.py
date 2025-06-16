@@ -61,7 +61,7 @@ class Task:
         # Retrieve all tasks from the database, sorted by completion and due date
         with sqlite3.connect(database) as conn:
             c = conn.cursor()
-            c.execute('SELECT * FROM tasks ORDER BY completed, due_date')
+            c.execute('SELECT * FROM tasks') # ORDER BY completed, due_date
             rows = c.fetchall()
             return [Task(*row) for row in rows]  # Return list of Task objects
 
@@ -94,3 +94,44 @@ class Task:
     def __str__(self):
         # Nicely format task display for the CLI
         return f"{self.id:<3} | {self.title:<20} | {self.description:<30} | {self.due_date:<10} | {'✅' if self.completed else '❌'}"
+
+# CLI Functions 
+def print_tasks(tasks):
+    # Print a list of tasks in tabular format
+    print("\nID  | Title                | Description                   | Due Date  | Completed")
+    print("-" * 80)
+    for task in tasks:
+        print(task)
+    print()
+
+def add_task():
+    # Prompt user for task details and add it to the database
+    title = input("Enter title: ")
+    description = input("Enter description: ")
+    due_date = input("Enter due date (YYYY-MM-DD): ")
+    task = Task(title=title, description=description, due_date=due_date)
+    task.save()
+    print("Task added!")
+
+def view_tasks():
+    # Retrieve and display all tasks
+    tasks = Task.get_all()
+    print_tasks(tasks)
+
+def mark_complete():
+    # Prompt for a task ID and mark it as completed
+    task_id = int(input("Enter task ID to mark as complete: "))
+    Task.mark_complete(task_id)
+    print("Task marked as complete!")
+
+def delete_task():
+    # Prompt for a task ID and delete it
+    task_id = int(input("Enter task ID to delete: "))
+    Task.delete(task_id)
+    print("Task deleted!")
+
+def export_tasks():
+    # Export tasks to a CSV file
+    Task.export_to_csv()
+    print("Tasks exported to tasks_export.csv")
+
